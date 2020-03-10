@@ -1,89 +1,98 @@
-// This sets us up for building a forge project for 1.6.2 - you need all of these
 buildscript {
-    repositories {
-        mavenCentral()
-        maven {
-            name = "forge"
-            url = "http://files.minecraftforge.net/maven"
-        }
-    }
-    dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:1.0-SNAPSHOT'
+	repositories {
+		jcenter()
+		maven { url = "http://files.minecraftforge.net/maven" }
+	}
+	dependencies {
+		classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+	}
+}
+
+repositories {
+    maven {
+        name 'LDTTeam - Modding'
+        url 'https://ldtteam.jfrog.io/ldtteam/modding/'
     }
 }
 
-// Apply the forge plugin - this adds all the magic for automatically obfuscating, de-obfuscating, etc.
-apply plugin: 'forge'
+apply plugin: 'idea'
+apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'maven'
 
-def versionInfo = getGitVersion()
-version = "${versionInfo['qidydlCCWebServer.version']}"
-group= "com.qidydl" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = "ccwebserver"
+ext.configFile = file "build.properties"
+configFile.withReader {
+    def prop = new Properties()
+    prop.load(it)
+    ext.config = new ConfigSlurper().parse prop
+}
+
+
+//Only edit below this line, the above code adds and enables the necessary things for Forge to be setup.
+
+version = "${config.mc_version}-${config.mod_version}"
+if (System.getenv()["Version"] != null)
+{
+    version = "${config.mc_version}-${System.getenv()["Version"]}"
+}
+
+group = config.package_group
+archivesBaseName = config.mod_name
+
+sourceCompatibility = targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
+compileJava {
+	sourceCompatibility = targetCompatibility = '1.8'
+}
 
 minecraft {
-	version = "1.6.4-9.11.1.964"
+	version = "${config.mc_version}-${config.forge_version}"
+	runDir = "run"
+	
+	replace "1.12.2-9999.9999.9999z", project.version
+	replaceIn "ModConstants.java"
+	
+	makeObfSourceJar = false
+	
+	if (config.mappings_version)
+		mappings = config.mappings_version
 }
 
-processResources
-{
-	// replace stuff in mcmod.info, nothing else
+dependencies {
+    //compile "mcp.mobius.waila:Hwyla:1.8.26-B41_1.12.2"
+}
+
+processResources {
+	inputs.property "version", project.version
+	inputs.property "mcversion", project.minecraft.version
+	
 	from(sourceSets.main.resources.srcDirs) {
 		include 'mcmod.info'
-
-		// replace version and mcversion
+		
 		expand 'version':project.version, 'mcversion':project.minecraft.version
 	}
-
-	// copy everything else, thats not the mcmod.info
+	
 	from(sourceSets.main.resources.srcDirs) {
 		exclude 'mcmod.info'
 	}
-
-	// generate version.properties file from the git version data earlier
-	doLast {
-		def propsFile = new File(destinationDir, 'version.properties')
-		def properties = new Properties()
-		properties.putAll(versionInfo)
-		properties['qidydlCCWebServer.build.mcversion'] = project.minecraft.version
-		properties.store(propsFile.newWriter(), null)
-	}
 }
 
-// this sets our output jar to have a 'tag' of 'universal' on it
-// It also adds the minecraft version in a custom version name
-// The result is files named <projectname>-<mcversion>-<version>-universal.jar
-jar {
-	classifier = 'universal'
-	version = "${project.minecraft.version}-${project.version}"
+task deobfJar(type: Jar) {
+    from sourceSets.main.output
+    classifier = 'deobf'
 }
 
-// This is a special task for pulling the version information from git and the environment (for BUILD_NUMBER)
-def getGitVersion()
-{
-    def out = [:]
+tasks.build.dependsOn deobfJar
 
-    // call git command.
-    def outStream = new ByteArrayOutputStream()
-    def result = exec {
-        executable = 'git'
-        args = [ 'describe', '--long', '--tags', '--match=[^(jenkins)]*']
-        standardOutput = outStream
+idea {
+    module {
+        inheritOutputDirs = true
     }
-
-    def fullVersion = outStream.toString().trim()
-    def matcher = fullVersion =~ /(\d+)\.(\d+)\.(\d+)-(\d+)-(.*)/
-
-    def maj = matcher[0][1]
-    def med = matcher[0][2]
-    def min = matcher[0][3]
-    def rev = matcher[0][4]
-
-    out['qidydlCCWebServer.build.major.number'] = maj.toString()
-    out['qidydlCCWebServer.build.medium.number'] = med.toString()
-    out['qidydlCCWebServer.build.minor.number'] = min.toString()
-    out['qidydlCCWebServer.build.revision.number'] = rev.toString()
-    out['qidydlCCWebServer.build.githash'] = matcher[0][4].toString()
-    out['qidydlCCWebServer.version' ] = "${maj}.${med}.${min}.${rev}".toString()
-
-    return out
+    module.downloadJavadoc = true
+    module.downloadSources = true
 }
+
+artifacts {
+    archives jar
+    archives sourceJar
+    archives deobfJar
+}
+
