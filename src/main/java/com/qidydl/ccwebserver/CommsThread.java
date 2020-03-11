@@ -16,9 +16,9 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
-import java.util.logging.Level;
 
-import cpw.mods.fml.common.FMLLog;
+import net.minecraftforge.fml.common.FMLLog;
+
 
 /**
  * The Communications Thread for ComputerCraft WebServer.
@@ -45,18 +45,15 @@ public class CommsThread extends Thread {
 	 *
 	 * @param port The port to listen for connections on.
 	 */
-	public CommsThread(int port)
-	{
+	public CommsThread(int port) {
 		terminate = new Semaphore(0);
 		listenPort = port;
 		sockets = new ConcurrentHashMap<Integer, SocketChannel>();
 		modems = new ConcurrentHashMap<Integer, TileEntityWebModem>();
-		try
-		{
+		try {
 			sel = Selector.open();
 		}
-		catch (IOException e)
-		{
+		catch (IOException e) {
 			// We're basically screwed if this happens.
 			// Initialization in the run() method checks for this, because
 			// blowing up in the constructor is problematic.
@@ -68,8 +65,7 @@ public class CommsThread extends Thread {
 	 * Set the instance of the CommsThread being used.
 	 * @param ct The CommsThread that should be used for communication.
 	 */
-	public static void setInstance(CommsThread ct)
-	{
+	public static void setInstance(CommsThread ct) {
 		s_Instance = ct;
 	}
 
@@ -77,8 +73,7 @@ public class CommsThread extends Thread {
 	 * Get the current instance of the CommsThread being used.
 	 * @return The CommsThread that should be used for communication.
 	 */
-	public static CommsThread getInstance()
-	{
+	public static CommsThread getInstance() {
 		return s_Instance;
 	}
 
@@ -86,8 +81,7 @@ public class CommsThread extends Thread {
 	 * Tell the communications thread to stop processing and close all open
 	 * connections.
 	 */
-	public void shutdown()
-	{
+	public void shutdown() {
 		s_Instance = null;
 
 		// Releasing the semaphore allows the thread to exit the loop
@@ -102,8 +96,7 @@ public class CommsThread extends Thread {
 	 * @param computerID The computer that is using the modem.
 	 * @param modem The modem that was activated.
 	 */
-	public void registerModem(int computerID, TileEntityWebModem modem)
-	{
+	public void registerModem(int computerID, TileEntityWebModem modem) {
 		modems.put(computerID, modem);
 	}
 
@@ -112,8 +105,7 @@ public class CommsThread extends Thread {
 	 * @param computerID The computer that is no longer using the modem.
 	 * @param modem The modem that was deactivated.
 	 */
-	public void unregisterModem(int computerID, TileEntityWebModem modem)
-	{
+	public void unregisterModem(int computerID, TileEntityWebModem modem) {
 		modems.remove(computerID);
 	}
 
@@ -125,12 +117,9 @@ public class CommsThread extends Thread {
 	 * @param responseCode The HTTP response code to transmit with the response.
 	 * @param data The data to transmit.
 	 */
-	public void transmitResponse(int connection, int responseCode, String data)
-	{
-		if (sockets.containsKey(connection))
-		{
-			try
-			{
+	public void transmitResponse(int connection, int responseCode, String data) {
+		if (sockets.containsKey(connection)) {
+			try {
 				SocketChannel conn = sockets.get(connection);
 
 				// Allocating a buffer every time is not optimal, but it might not be a big deal.
@@ -138,15 +127,14 @@ public class CommsThread extends Thread {
 				// buffer or something like that.
 				ByteBuffer outputBuffer = ByteBuffer.wrap(data.getBytes("UTF-8"));
 				conn.write(outputBuffer);
+				conn.close();
 			}
-			catch (UnsupportedEncodingException e)
-			{
+			catch (UnsupportedEncodingException e) {
 				// Should be impossible to get here; UTF-8 is really standard and supports nearly any character
-				FMLLog.log(Level.SEVERE, e, "CCWebServer: CommsThread: Unsupported encoding!");
+				FMLLog.log.error(e.toString(), "CCWebServer: CommsThread: Unsupported encoding!");
 				e.printStackTrace();
 			}
-			catch (IOException e)
-			{
+			catch (IOException e) {
 				// Thrown mostly by the socket being closed, which will be detected and handled by
 				// the normal processing loop, so we don't need to do anything here.
 			}
@@ -166,11 +154,9 @@ public class CommsThread extends Thread {
 		boolean terminated = true;
 
 		// Don't bother trying to initialize if we couldn't create the Selector
-		if (sel != null)
-		{
+		if (sel != null) {
 			// Initialize I/O and start listening for connections
-			try
-			{
+			try {
 				servsock = ServerSocketChannel.open();
 				servsock.bind(new InetSocketAddress(listenPort));
 				servsock.configureBlocking(false);
@@ -182,28 +168,22 @@ public class CommsThread extends Thread {
 				// Only allow the loop to run if we finished all of the above
 				terminated = false;
 			}
-			catch (IOException e)
-			{
+			catch (IOException e) {
 				// We're basically screwed if this happens.
-				FMLLog.log(Level.SEVERE, e, "CCWebServer Mod: CommsThread: Could not listen for connections!");
+				FMLLog.log.error(e.toString(), "CCWebServer Mod: CommsThread: Could not listen for connections!");
 			}
 		}
 
 		// Main processing loop - listen for connections or new data
-		while (!terminated)
-		{
-			try
-			{
+		while (!terminated) {
+			try {
 				// Block until something happens. Shutdown will release us from this.
 				int num = sel.select();
 
-				if (num > 0)
-				{
+				if (num > 0) {
 					// Look through all the items that should have something available
-					for (SelectionKey key : sel.selectedKeys())
-					{
-						if (key.isAcceptable())
-						{
+					for (SelectionKey key : sel.selectedKeys()) {
+						if (key.isAcceptable()) {
 							// Accept the incoming connection.
 							SocketChannel conn = ((ServerSocketChannel)key.channel()).accept();
 							conn.configureBlocking(false);
@@ -214,12 +194,10 @@ public class CommsThread extends Thread {
 							System.out.println("Received connection from " + conn.socket().getRemoteSocketAddress().toString());
 						}
 						else // Everything else is UN-ACCEPTABLE :P
-						if (key.isReadable())
-						{
+						if (key.isReadable()) {
 							SocketChannel conn = (SocketChannel)key.channel();
 
-							if (!processInput(conn))
-							{
+							if (!processInput(conn)) {
 								// We couldn't read any data. This *might* be an error, but most likely it's socket
 								// closure, so clean up.
 								key.cancel();
@@ -239,37 +217,39 @@ public class CommsThread extends Thread {
 				// Check the semaphore to see if we're shutting down, but don't block.
 				terminated = terminate.tryAcquire();
 			}
-			catch (ClosedSelectorException e)
-			{
+			catch (ClosedSelectorException e) {
 				// We're done, for whatever reason.
-				FMLLog.log(Level.WARNING, e, "CCWebServer: CommsThread: Selector closed unexpectedly.");
+				FMLLog.log.error(e.toString(), "CCWebServer: CommsThread: Selector closed unexpectedly.");
 				terminated = true;
 			}
-			catch (IOException e)
-			{
+			catch (IOException e) {
 				// May or may not be able to recover from some situations, for now just give up.
 				// In the future this should be moved inside the selectedKeys loop to cancel any keys that
 				// are causing problems.
-				FMLLog.log(Level.WARNING, e, "CCWebServer: CommsThread: Communications failure!");
+				FMLLog.log.error(e.toString(), "CCWebServer: CommsThread: Communications failure!");
 				terminated = true;
 			}
 		}
 
 		// Clean-up
-		if (initialized)
-		{
-			try
-			{
+		if (initialized) {
+			try {
 				servsock.close();
 				sel.close();
 			}
-			catch (IOException e)
-			{
+			catch (IOException e) {
 				// We don't care, we're shutting down anyway.
 			}
 		}
 	}
 
+	enum RequestType {
+		Raw,
+		Get,
+		Head,
+		Post
+	}
+	
 	/**
 	 * Process data received from a remote connection.
 	 *
@@ -277,22 +257,19 @@ public class CommsThread extends Thread {
 	 * @return True if data was actually received, false otherwise.
 	 * @throws IOException If an error occurs while reading the data.
 	 */
-	private boolean processInput(SocketChannel sc) throws IOException
-	{
+	private boolean processInput(SocketChannel sc) throws IOException {
 		// Read received data into the buffer
 		buffer.clear();
 		sc.read(buffer);
 
 		// Verify we received some data
-		if (buffer.position() == 0)
-		{
+		if (buffer.position() == 0) {
 			return false;
 		}
 
 		// Keep reading data until we've got it all
 		StringBuilder inputBuilder = new StringBuilder();
-		do
-		{
+		do {
 			// "Flip" the buffer to access the data we just received
 			buffer.flip();
 
@@ -311,23 +288,51 @@ public class CommsThread extends Thread {
 		String path = "";
 		List<String> params = new ArrayList<String>();
 
+		//System.out.println("Input Received [" + input + "]");
+		
+		RequestType mode = RequestType.Raw;
+		
+		//Process HTTP Method types
+		if(input.startsWith("GET ") ) {
+			mode = RequestType.Get;
+			input = input.substring(4);//Consume "GET "
+		} else if(input.startsWith("HEAD ")) {
+			mode = RequestType.Head;
+			input = input.substring(5);//Consume "HEAD "
+		} 
+		else if(input.startsWith("POST ")) {
+			mode = RequestType.Post;
+			input = input.substring(5);//Consume "POST "
+		}
+		
+		if(mode == RequestType.Get || mode == RequestType.Head) {
+			int s = input.indexOf(' ');
+			if(s > 0) {
+				input = input.substring(0, s);//Drop the header data after the URL
+				//TODO: Build request header and pass it to the modem
+			}
+		} else if(mode == RequestType.Post) {
+			transmitResponse(sc.hashCode(), 405, "Bad Request: Method Not Allowed: " + mode);
+			return true;
+		} else if(mode == RequestType.Raw) {
+			mode = RequestType.Get;//Assume GET without the proper tag
+		}
+		
+		
 		// First, break apart path and query string
 		int split = input.indexOf('?');
-		if (split > 0)
-		{
+		if (split > 0) {
 			// First part is the URL path
 			path = input.substring(0, split);
 
 			// The rest is all parameter data concatenated together
 			String paramData = input.substring(split + 1);
 			String[] paramPairs = paramData.split("&");
-			for (String pair : paramPairs)
-			{
+			for (String pair : paramPairs) {
 				params.add(URLDecoder.decode(pair, "UTF-8"));
 			}
 		}
-		else
-		{
+		else {
 			// No parameters specified
 			path = input;
 		}
@@ -338,17 +343,18 @@ public class CommsThread extends Thread {
 		// Now we have an absolute path and parameter data, next we need to examine the path.
 
 		//DEBUG
-		System.out.println("Received request for [" + path + "] with parameters [" + params.toString() + "]");
-		ByteBuffer test = ByteBuffer.allocate(1024);
-		test.put("test\n".getBytes("UTF-8"));
-		test.flip();
-		sc.write(test);
+		//System.out.println("Received request for [" + path + "] with parameters [" + params.toString() + "]");
+		//ByteBuffer test = ByteBuffer.allocate(1024);
+		//test.put("test\n".getBytes("UTF-8"));
+		//test.flip();
+		//sc.write(test);
 		//DEBUG
 
 		// Strip any leading slashes
-		while (path.substring(0, 1) == "/")
-		{
-			path = path.substring(1);
+		if(path.length() > 0) {
+			while (path.startsWith("/")) {
+				path = path.substring(1);
+			}
 		}
 
 		// Break the path into computer ID and everything else
@@ -359,32 +365,29 @@ public class CommsThread extends Thread {
 		// Path format is <computerId>[/optional further path]
 		split = path.indexOf('/');
 
-		if (split > 0)
-		{
+		if (split > 0) {
 			computerID = path.substring(0, split);
 			remainingPath = path.substring(split + 1);
 		}
-		else
-		{
+		else {
 			computerID = path;
 		}
 
-		try
-		{
+		try {
 			computerIDint = Integer.parseInt(computerID);
 		}
-		catch (NumberFormatException e)
-		{
+		catch (NumberFormatException e) {
+			//System.out.print("Bad Request: Computer ID must be a valid integer [" + computerID + "]");
 			transmitResponse(sc.hashCode(), 400, "Bad Request: Computer ID must be a valid integer");
 		}
 
-		if (modems.containsKey(computerIDint))
-		{
+		if (modems.containsKey(computerIDint)) {
+			//System.out.print("Computer ID processing [" + computerIDint + "]");
 			TileEntityWebModem modem = modems.get(computerIDint);
 			modem.receiveRequest(sc.hashCode(), computerIDint, remainingPath, params);
 		}
-		else
-		{
+		else {
+			//System.out.print("Object Not Found: The specified computer ID does not exist or is not ready.");
 			transmitResponse(sc.hashCode(), 404, "Object Not Found: The specified computer ID does not exist or is not ready.");
 		}
 

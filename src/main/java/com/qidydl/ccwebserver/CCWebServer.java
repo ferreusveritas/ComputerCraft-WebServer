@@ -1,31 +1,24 @@
 package com.qidydl.ccwebserver;
 
-import java.util.logging.Level;
-
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraftforge.common.Configuration;
-import cpw.mods.fml.common.FMLLog;
-import cpw.mods.fml.common.Mod;
-import cpw.mods.fml.common.Mod.EventHandler;
-import cpw.mods.fml.common.Mod.Instance;
-import cpw.mods.fml.common.SidedProxy;
-import cpw.mods.fml.common.event.FMLInitializationEvent;
-import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.event.FMLServerStartingEvent;
-import cpw.mods.fml.common.event.FMLServerStoppingEvent;
-import cpw.mods.fml.common.network.NetworkMod;
-import cpw.mods.fml.common.registry.GameRegistry;
-import cpw.mods.fml.common.registry.LanguageRegistry;
-import dan200.computercraft.api.ComputerCraftAPI;
+import net.minecraft.item.ItemBlock;
+import net.minecraft.item.crafting.IRecipe;
+import net.minecraftforge.common.config.Configuration;
+import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.fml.common.FMLLog;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.SidedProxy;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
+import net.minecraftforge.fml.common.event.FMLServerStoppingEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.registries.IForgeRegistry;
 
-@Mod(modid = "qidydlCCWebServer", name = "ComputerCraft WebServer", dependencies = "required-after:ComputerCraft@[1.6,)")
-@NetworkMod(serverSideRequired = true, clientSideRequired = true)
-public class CCWebServer
-{
-	// The instance of your mod that Forge uses.
-	@Instance(value = "qidydlCCWebServer")
+@Mod(modid = ModConstants.MODID, version=ModConstants.VERSION, dependencies=ModConstants.DEPENDENCIES)
+public class CCWebServer {
+	
+	@Mod.Instance(ModConstants.MODID)
 	public static CCWebServer instance;
 
 	// Says where the client and server 'proxy' code is loaded.
@@ -36,79 +29,73 @@ public class CCWebServer
 	public static int LISTEN_PORT = 60000;
 
 	// Standard Java instance variables
-	public static int blockWebModemID = 1234;
 	public static Block blockWebModem;
 	private CommsThread commsThread;
-
-	@EventHandler
-	public void preInit(FMLPreInitializationEvent event)
-	{
-		Version.init(event.getVersionProperties());
-		event.getModMetadata().version = Version.fullVersionString();
-
+	
+	@Mod.EventHandler
+	public void preInit(FMLPreInitializationEvent event) {
+		
 		Configuration cfg = new Configuration(event.getSuggestedConfigurationFile());
-		try
-		{
+		try {
 			cfg.load();
-			blockWebModemID = cfg.getBlock("webModem", blockWebModemID).getInt();
 			LISTEN_PORT = cfg.get(Configuration.CATEGORY_GENERAL, "listenPort", LISTEN_PORT).getInt();
 		}
-		catch (Exception e)
-		{
-			FMLLog.log(Level.WARNING, e, "ComputerCraft WebServer has a problem loading its configuration");
+		catch (Exception e) {
+			FMLLog.log.warn(e.toString(), "ComputerCraft WebServer has a problem loading its configuration");
 		}
-		finally
-		{
-			if (cfg.hasChanged())
-			{
+		finally	{
+			if (cfg.hasChanged()) {
 				cfg.save();
 			}
 		}
 
-		blockWebModem = new BlockWebModem(blockWebModemID);
-		GameRegistry.registerBlock(blockWebModem, "blockWebModem");
+		blockWebModem = new BlockWebModem();
 	}
+	
+	@Mod.EventBusSubscriber(modid = ModConstants.MODID)
+	public static class RegistrationHandler {
 
-	@EventHandler
-	public void load(FMLInitializationEvent event)
-	{
-		proxy.registerRenderers();
+		@SubscribeEvent
+		public static void registerBlocks(RegistryEvent.Register<Block> event) {
+			IForgeRegistry<Block> registry = event.getRegistry();
+			registry.register(blockWebModem);
+		}
 
-		LanguageRegistry.addName(blockWebModem, "Web Modem");
+		@SubscribeEvent
+		public static void registerItems(RegistryEvent.Register<Item> event) {
+			IForgeRegistry<Item> registry = event.getRegistry();
+			registry.register( new ItemBlock(blockWebModem).setRegistryName(blockWebModem.getRegistryName()) );
+		}
 
-		GameRegistry.registerTileEntity(TileEntityWebModem.class, "tileEntityWebModem");
+		@SubscribeEvent
+		public static void registerRecipes(RegistryEvent.Register<IRecipe> event) {
+			//ItemStack stoneStack = new ItemStack(Blocks.STONE);
+			//ItemStack enderPearlStack = new ItemStack(Items.ENDER_PEARL);
+			//ItemStack diamondStack = new ItemStack(Items.DIAMOND);
+			//ItemStack webModemStack = new ItemStack(blockWebModem);
 
-		ItemStack stoneStack = new ItemStack(Block.stone);
-		ItemStack enderPearlStack = new ItemStack(Item.enderPearl);
-		ItemStack diamondStack = new ItemStack(Item.diamond);
-		ItemStack webModemStack = new ItemStack(blockWebModem);
-
-		GameRegistry.addRecipe(webModemStack,
-				"xxx", "xyx", "xzx",
-				'x', stoneStack, 'y', enderPearlStack, 'z', diamondStack);
-
-		ComputerCraftAPI.registerPeripheralProvider((BlockWebModem)blockWebModem);
+			//GameRegistry.addRecipe(webModemStack, "xxx", "xyx", "xzx", 'x', stoneStack, 'y', enderPearlStack, 'z', diamondStack);
+		}
+		
 	}
+	
 
-	@EventHandler
-	public void serverStarting(FMLServerStartingEvent event)
-	{
+	@Mod.EventHandler
+	public void serverStarting(FMLServerStartingEvent event) {
 		commsThread = new CommsThread(LISTEN_PORT);
 		CommsThread.setInstance(commsThread);
 		commsThread.start();
 	}
 
-	@EventHandler
-	public void serverStopping(FMLServerStoppingEvent event)
-	{
+	@Mod.EventHandler
+	public void serverStopping(FMLServerStoppingEvent event) {
 		commsThread.shutdown();
-		try
-		{
+		try {
 			commsThread.join();
 		}
-		catch (InterruptedException e)
-		{
+		catch (InterruptedException e) {
 			// We don't care, we're shutting down anyway.
 		}
 	}
+	
 }
