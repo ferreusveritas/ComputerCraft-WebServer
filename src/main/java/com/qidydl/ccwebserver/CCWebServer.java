@@ -1,9 +1,12 @@
 package com.qidydl.ccwebserver;
 
 import net.minecraft.block.Block;
+import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.crafting.IRecipe;
+import net.minecraftforge.client.event.ModelRegistryEvent;
+import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.fml.common.FMLLog;
@@ -13,6 +16,8 @@ import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 import net.minecraftforge.fml.common.event.FMLServerStoppingEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.registries.IForgeRegistry;
 
 @Mod(modid = ModConstants.MODID, version=ModConstants.VERSION, dependencies=ModConstants.DEPENDENCIES)
@@ -75,6 +80,12 @@ public class CCWebServer {
 			//ItemStack webModemStack = new ItemStack(blockWebModem);
 
 			//GameRegistry.addRecipe(webModemStack, "xxx", "xyx", "xzx", 'x', stoneStack, 'y', enderPearlStack, 'z', diamondStack);
+		}
+		
+		@SubscribeEvent
+		@SideOnly(Side.CLIENT)
+		public static void registerModels(ModelRegistryEvent event) {
+			ModelLoader.setCustomModelResourceLocation(Item.getItemFromBlock(blockWebModem), 0, new ModelResourceLocation(blockWebModem.getRegistryName(), "inventory"));
 		}
 		
 	}

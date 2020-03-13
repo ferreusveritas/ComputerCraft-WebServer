@@ -1,0 +1,8 @@
+{
+    "parent": "block/cube_bottom_top",
+    "textures": {
+        "bottom": "ccwebserver:blocks/webmodem_bottom",
+        "top": "ccwebserver:blocks/webmodem_top",
+        "side": "ccwebserver:blocks/webmodem_side"
+    }
+}

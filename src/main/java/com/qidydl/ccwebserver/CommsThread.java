@@ -17,6 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 
+import org.apache.http.impl.EnglishReasonPhraseCatalog;
+
 import net.minecraftforge.fml.common.FMLLog;
 
 
@@ -30,7 +32,7 @@ import net.minecraftforge.fml.common.FMLLog;
  * @author qidydl
  */
 public class CommsThread extends Thread {
-
+		
 	private final Semaphore terminate;
 	private final int listenPort;
 	private final ByteBuffer buffer = ByteBuffer.allocate( 16384 );
@@ -109,6 +111,9 @@ public class CommsThread extends Thread {
 		modems.remove(computerID);
 	}
 
+	
+	
+	
 	/**
 	 * Transmit a response to a particular connection. This can only be used when the Comms Thread
 	 * has told a modem that it has a request.
@@ -121,13 +126,19 @@ public class CommsThread extends Thread {
 		if (sockets.containsKey(connection)) {
 			try {
 				SocketChannel conn = sockets.get(connection);
-
+				String reason = EnglishReasonPhraseCatalog.INSTANCE.getReason(responseCode, null);
+				data = "HTTP/1.0 " + responseCode + " " + reason + "\n\n" + data;
+				
 				// Allocating a buffer every time is not optimal, but it might not be a big deal.
 				// *If* it proves to be a problem, this can be converted to a shared or per-thread
 				// buffer or something like that.
 				ByteBuffer outputBuffer = ByteBuffer.wrap(data.getBytes("UTF-8"));
 				conn.write(outputBuffer);
-				conn.close();
+				
+				SelectionKey key = conn.keyFor(sel);
+				key.cancel();
+				conn.socket().close();
+				sockets.remove(conn.hashCode());
 			}
 			catch (UnsupportedEncodingException e) {
 				// Should be impossible to get here; UTF-8 is really standard and supports nearly any character
@@ -191,7 +202,7 @@ public class CommsThread extends Thread {
 							sockets.put(conn.hashCode(), conn);
 
 							//DEBUG
-							System.out.println("Received connection from " + conn.socket().getRemoteSocketAddress().toString());
+							//System.out.println("Received connection from " + conn.socket().getRemoteSocketAddress().toString());
 						}
 						else // Everything else is UN-ACCEPTABLE :P
 						if (key.isReadable()) {
@@ -205,7 +216,7 @@ public class CommsThread extends Thread {
 								sockets.remove(conn.hashCode());
 
 								//DEBUG
-								System.out.println("Connection closed from " + conn.socket().getRemoteSocketAddress().toString());
+								//System.out.println("Connection closed from " + conn.socket().getRemoteSocketAddress().toString());
 							}
 						}
 					}
