@@ -2,11 +2,12 @@ package com.qidydl.ccwebserver;
 
 import java.util.List;
 
+import com.ferreusveritas.mcf.ModTabs;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.ITileEntityProvider;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
@@ -26,7 +27,8 @@ public class BlockWebModem extends Block implements ITileEntityProvider, IPeriph
 		super(Material.IRON);
 		setRegistryName(blockName);
 		setUnlocalizedName(blockName);
-		setCreativeTab(CreativeTabs.MISC);
+		//setCreativeTab(CreativeTabs.MISC);
+		setCreativeTab(ModTabs.mcfTab);
 		ComputerCraftAPI.registerPeripheralProvider(this);
 		GameRegistry.registerTileEntity(TileEntityWebModem.class, new ResourceLocation(ModConstants.MODID, blockName));
 	}
