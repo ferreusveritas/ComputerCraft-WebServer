@@ -17,8 +17,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 
-import org.apache.http.impl.EnglishReasonPhraseCatalog;
-
 import net.minecraftforge.fml.common.FMLLog;
 
 
@@ -111,7 +109,67 @@ public class CommsThread extends Thread {
 		modems.remove(computerID);
 	}
 
-	
+	public String GetReasonCode(int responseCode) {
+
+		switch(responseCode) {
+	        // HTTP 1.0 Server status codes -- see RFC 1945
+	        case 200: return "OK";
+	        case 201: return "Created";
+	        case 202: return "Accepted";
+	        case 204: return "No Content";
+	        case 301: return "Moved Permanently";
+	        case 302: return "Moved Temporarily";
+	        case 304: return "Not Modified";
+	        case 400: return "Bad Request";
+	        case 401: return "Unauthorized";
+	        case 403: return "Forbidden";
+	        case 404: return "Not Found";
+	        case 500: return "Internal Server Error";
+	        case 501: return "Not Implemented";
+	        case 502: return "Bad Gateway";
+	        case 503: return "Service Unavailable";
+             
+	        // HTTP 1.1 Server status codes -- see RFC 2048
+	        case 100: return "Continue";
+	        case 307: return "Temporary Redirect";
+	        case 405: return "Method Not Allowed";
+	        case 409: return "Conflict";
+	        case 412: return "Precondition Failed";
+	        case 413: return "Request Too Long";
+	        case 414: return "Request-URI Too Long";
+	        case 415: return "Unsupported Media Type";
+	        case 300: return "Multiple Choices";
+	        case 303: return "See Other";
+	        case 305: return "Use Proxy";
+	        case 402: return "Payment Required";
+	        case 406: return "Not Acceptable";
+	        case 407: return "Proxy Authentication Required";
+	        case 408: return "Request Timeout";
+            
+	        case 101: return "Switching Protocols";
+	        case 203: return "Non Authoritative Information";
+	        case 205: return "Reset Content";
+	        case 206: return "Partial Content";
+	        case 504: return "Gateway Timeout";
+	        case 505: return "Http Version Not Supported";
+	        case 410: return "Gone";
+	        case 411: return "Length Required";
+	        case 416: return "Requested Range Not Satisfiable";
+	        case 417: return "Expectation Failed";
+             
+	        // WebDAV Server-specific status codes
+	        case 102: return "Processing";
+	        case 207: return "Multi-Status";
+	        case 422: return "Unprocessable Entity";
+	        case 419: return "Insufficient Space On Resource";
+	        case 420: return "Method Failure";
+	        case 423: return "Locked";
+	        case 507: return "Insufficient Storage";
+	        case 424: return "Failed Dependency";
+		}
+		
+		return "Unknown";
+	}
 	
 	
 	/**
@@ -126,7 +184,7 @@ public class CommsThread extends Thread {
 		if (sockets.containsKey(connection)) {
 			try {
 				SocketChannel conn = sockets.get(connection);
-				String reason = EnglishReasonPhraseCatalog.INSTANCE.getReason(responseCode, null);
+				String reason = GetReasonCode(responseCode);
 				data = "HTTP/1.0 " + responseCode + " " + reason + "\n\n" + data;
 				
 				// Allocating a buffer every time is not optimal, but it might not be a big deal.
