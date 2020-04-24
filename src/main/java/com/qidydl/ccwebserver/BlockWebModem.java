@@ -44,7 +44,14 @@ public class BlockWebModem extends Block implements ITileEntityProvider, IPeriph
 
 	@Override
 	public IPeripheral getPeripheral(World world, BlockPos pos, EnumFacing side) {
-		return (TileEntityWebModem)world.getTileEntity(pos);
+		
+		TileEntity tileEntity = world.getTileEntity(pos);
+		
+		if(tileEntity instanceof TileEntityWebModem) {
+			return (IPeripheral) tileEntity;
+		}
+		
+		return null;
 	}
 
 	///////////////////////////////////////////
